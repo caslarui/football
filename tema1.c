@@ -16,11 +16,13 @@ void test0() {
 	FootballClub *clubs = initialize_clubs(3, names);
 	clubs = add_club(clubs, "club4");
 	add_player(clubs, "club1", "n1", "atacant", 1);
+  printf("aici\n");
 	add_player(clubs, "club1", "n7", "atacant", -100);
 	add_player(clubs, "club2", "n2", "fundas", 2);
 	add_player(clubs, "club3", "n3", "mijlocas", 3);
 	add_player(clubs, "club4", "n4", "portar", 4);
 	add_player(clubs, "club4", "n5", "portar", 0);
+
 	show_clubs_info(f, clubs);
 	if (clubs) {
 		show_list_reverse(f, clubs->players, 0);
