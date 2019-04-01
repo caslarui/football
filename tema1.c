@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include "TeamExtractor.h"
 
 void test0() {
@@ -15,8 +13,8 @@ void test0() {
 	}
 	FootballClub *clubs = initialize_clubs(3, names);
 	clubs = add_club(clubs, "club4");
+
 	add_player(clubs, "club1", "n1", "atacant", 1);
-  printf("aici\n");
 	add_player(clubs, "club1", "n7", "atacant", -100);
 	add_player(clubs, "club2", "n2", "fundas", 2);
 	add_player(clubs, "club3", "n3", "mijlocas", 3);

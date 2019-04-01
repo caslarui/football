@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// #define __STRICT_ANSI__
+
+char* strdup(char* str);
 
 // List node which contains information about one football player.
 typedef struct Player {
@@ -35,14 +38,6 @@ int valid_score(int score) {
 	return -100;
 }
 
-void Player_Info(Player* player) {
-	printf("(%s, %s, %d, %c) \n",
-		player->name,
-		player->position,
-		player->score,
-		player->injured ? 'Y' : '_');
-}
-
 void new_player(Player **player, char* name, char *position,
 								int score, int injure) {
 	(*player) = (Player *)malloc(sizeof(Player));
@@ -53,25 +48,26 @@ void new_player(Player **player, char* name, char *position,
 	(*player)->next = (*player)->prev = NULL;
 }
 
-int lookup(Player* head, char* str) {
-	if (head) {
-		Player* crt = head;
-		while(crt->next != NULL) {
-			if (strcmp(str, head->position) == 0)
-				return 1;
-				crt = crt->next;
-		}
-	}
-	return 0;
+void free_player(Player **player) {
+	free((*player)->name);
+	free((*player)->position);
+	free((*player));
+	*player = NULL;
 }
 
-void Sort_list(Player** head) {
-	Player *crt = *head;
+Player* cpy_player(Player* player) {
+	Player* ret = NULL;
 
-	if(crt != NULL) {
-		while (crt->next != NULL) {
-		}
-	}
+	ret = (Player* )malloc(sizeof(Player));
+	ret->injured = player->injured;
+	ret->position = strdup(player->position);
+	ret->name = strdup(player->name);
+	ret->score = player->score;
+	ret->next = NULL;
+	ret->prev = NULL;
+	
+	return ret;
+	
 }
 
 void InsertAfter(Player* prev_node, Player* new_player) {
@@ -82,7 +78,7 @@ void InsertAfter(Player* prev_node, Player* new_player) {
 	prev_node->next = new_player;
 	new_player->prev = prev_node;
 	if(new_player->next != NULL)
-		new_player->next->prev = prev_node;
+		new_player->next->prev = new_player;
 }
 
 void InsertBefore(Player** head, Player* current_node, Player* new_player) {
@@ -109,10 +105,72 @@ int NrPos(Player* player, char* position){
 	return count;
 }
 
+FootballClub* goto_club(FootballClub* clubs, char* club_name) {
+	FootballClub* current = NULL;
+
+	if(clubs) {
+		current = clubs;
+		while(current != NULL && !(strcmp(club_name, current->name) == 0)){
+			current = current->next;
+		}
+	}
+	return current;
+}
+
+Player* goto_player(FootballClub* club, char* player_name) {
+	Player* current_player = NULL;
+
+	if(club != NULL ) {
+		if(club->players != NULL) {
+			current_player = club->players;
+			while(current_player != NULL && !(strcmp(current_player->name, player_name) == 0))
+				current_player = current_player->next;
+		}
+		if(current_player == NULL && club->injured_players != NULL) {
+			current_player = club->injured_players;
+			while(current_player != NULL && !(strcmp(current_player->name, player_name) == 0))
+				current_player = current_player->next;
+		}
+	}
+	return current_player;
+}
+
+Player* goto_position(Player* players, char* position) {
+	Player* current_player = NULL;
+
+	if(players != NULL) {
+		current_player = players;
+		while(current_player != NULL && !(strcmp(current_player->position, position) == 0))
+			current_player = current_player->next;
+	}
+	return current_player;
+}
+
 void Sorted_insert(Player** head, Player* new_player) {
 	Player* curent;
 	int n, i;
 
+	if(new_player->injured == 1) {
+		if (*head == NULL) 
+			*head = new_player;
+		else {
+			curent = *head;
+			while(curent != NULL){
+				if(strcmp(curent->name, new_player->name) < 0) {
+					if(curent->next == NULL) {
+						InsertAfter(curent,new_player);
+						return ;
+					}
+				}
+				if(strcmp(curent->name, new_player->name) > 0){
+					InsertBefore(head, curent, new_player);
+					return ;
+				}
+				curent = curent->next;
+			}
+		}
+
+	} else {
 	if (*head == NULL) {
 		*head = new_player;
 	}
@@ -120,9 +178,6 @@ void Sorted_insert(Player** head, Player* new_player) {
 		curent = *head;
 		if((n = NrPos(curent, new_player->position)) == 0){
 			while(curent != NULL){
-				// Player_Info(new_player);
-
-  				// printf("aici\n");
 				if(strcmp(curent->position, new_player->position) < 0) {
 					if(curent->next == NULL) {
 
@@ -138,45 +193,31 @@ void Sorted_insert(Player** head, Player* new_player) {
 			}
 		}
 		else{
-			while(strcmp(curent->position,new_player->position) != 0)
+			while(strcmp(curent->position,new_player->position) != 0 && curent != NULL)
 				curent = curent->next;
-				// Player_Info(curent);
-				// printf("\n%d\n",n);
-			for(i = 0; curent != NULL && i < n; i++, curent = curent->next){
-				if(curent->score > new_player->score && curent->next == NULL){
-					InsertAfter(curent, new_player);
-					return ; 
+			for(i = 0; i < n; i++, curent = curent->next){
+				if(curent->score > new_player->score) {
+					if (i == n - 1) {
+						InsertAfter(curent, new_player);
+						return ;
+					} else
+						continue ;
 				}
-				if(curent->score > new_player->score && (i == n - 1)) {
-					InsertAfter(curent, new_player);
-					return ;
-				}
-				// if(curent->score > new_player->score){
-					// curent = curent->next;
-				// }
 				if(curent->score < new_player->score){
 					InsertBefore(head, curent, new_player);
 					return ;
 				}
 				if(curent->score == new_player->score){
 					if(strcmp(curent->name, new_player->name) < 0){
-						if(i == n - 1){
-							if(strcmp(curent->name, new_player->name) < 0){
-								InsertAfter(curent, new_player);
-								return ; 
-							}
-							else{
-								InsertBefore(head, curent, new_player);
-								return ;
-							}
-
+						if(i == n - 1) {
+							InsertAfter(curent, new_player);
+							return ;
 						}
-					}
+					} else 
 					if(strcmp(curent->name, new_player->name) > 0){
 						InsertBefore(head, curent, new_player);
 						return ;
 					}
-
 				}
 			}
 		}
@@ -184,22 +225,24 @@ void Sorted_insert(Player** head, Player* new_player) {
 	
 }
 
+	
+}
+
 FootballClub* add_club(FootballClub *clubs, char *name) {
+	FootballClub* new_club = (FootballClub *)malloc(sizeof(FootballClub));
+	new_club->name = strdup(name);
+	new_club->next = NULL;
+	new_club->players = new_club->injured_players = NULL;
+
 	if(clubs == NULL) {
-		clubs = (FootballClub* )malloc(sizeof(FootballClub));
-		clubs->name = strdup(name);
-		clubs->next = NULL;
-		clubs->players = clubs->injured_players = NULL;
+		return new_club;
 	} else {
 		FootballClub* head = clubs;
 		while(head->next != NULL)
 			head = head->next;
-		head->next = (FootballClub* )malloc(sizeof(FootballClub));
-		head->next->name = strdup(name);
-		head->next->players = head->next->injured_players = NULL;
-		head->next->next = NULL;
+		head->next = new_club;
+		return clubs;	
 	}
-	return clubs;
 }
 
 
@@ -208,7 +251,7 @@ FootballClub *initialize_clubs(int clubs_no, char **names) {
 	FootballClub* clubs = NULL;
 
 	for (i = 0; i < clubs_no; i++) {
-		clubs = add_club(clubs,names[i]);
+		clubs = add_club(clubs, names[i]);
 	}
 	return(clubs);
 }
@@ -216,241 +259,215 @@ FootballClub *initialize_clubs(int clubs_no, char **names) {
 
 void add_player(FootballClub *clubs, char *club_name,
 				char *player_name, char *position, int score) {
+	FootballClub* curr_club; //club head
 	Player* player;
-	if (clubs) {
-		FootballClub* c_head = clubs; //club head
-		new_player(&player, player_name, position, score, 0);
-		while(c_head != NULL) {
-			if(strcmp(c_head->name, club_name) == 0) {
-				// printf("!!!!%s\n",c_head->name);
-				Sorted_insert(&(c_head)->players, player);
-				}
-			c_head = c_head->next;
-			}
-		}
-}
 
+	if (clubs) {
+		if((curr_club = goto_club(clubs, club_name)) != NULL) {
+			new_player(&player, player_name, position, score, 0);
+			Sorted_insert(&(curr_club)->players, player);		
+		}
+	}
+}
+//Functia data gaseste playerul pe care urmeaza sa-l transfere,
+// Creeaza o copie a acestuia dupa care il sterge din club si 
+// il insereaza din nou doar ca in clubul nou 
 void transfer_player(FootballClub *clubs, char *player_name,
 					char *old_club, char *new_club) {
-	FootballClub* curr_club;
+	FootballClub* curr_old_club;
+	FootballClub* curr_new_club;
 	Player *tmp;
-	Player* player;
+	Player* curr_player;
 
 	if(clubs != NULL) {
-		curr_club = clubs;
-		while(curr_club->next != NULL && !(strcmp(curr_club->name, old_club) == 0) )
-			curr_club = curr_club->next;
-		// printf("\n---------------------%s\n",curr_club->name);
-		player = curr_club->players;
-		while(player->next != NULL && !(strcmp(player->name, player_name) == 0) )
-			player = player->next;
-//   printf("aici\n");
-		if(strcmp(player->name, player_name) == 0) {
-			tmp = player;
-			if(player->prev != NULL)
-				player->prev->next = player->next;
-			if(player->next != NULL) {
-				player->next->prev = player->prev;
-				while(player->prev != NULL)
-					player = player->prev;
-				curr_club->players = player;
+		if( (curr_old_club = goto_club(clubs, old_club)) != NULL) {
+			if ( (curr_new_club = goto_club(clubs, new_club)) != NULL ) {
+				if( (curr_player = goto_player(curr_old_club, player_name)) != NULL) {
+					tmp = cpy_player(curr_player);
+					remove_player(clubs, old_club, player_name);
+					if(tmp->injured == 0)
+						Sorted_insert(&(curr_new_club->players), tmp);
+					else
+						Sorted_insert(&(curr_new_club->injured_players), tmp);
+				}
 			}
-			curr_club = clubs;
-			while(curr_club->next != NULL && !(strcmp(curr_club->name, new_club) == 0) )
-				curr_club = curr_club->next;
-			if(strcmp(curr_club->name, new_club) == 0)
-				Sorted_insert(&(curr_club)->players, tmp);
-			else
-			{
-				return ;
-			}
-			
-		} else
-			return;
-	}
+		}
+	} else
+		return ;
 }
+
+
 
 void remove_player(FootballClub *clubs, char *club_name, char *player_name) {
-	Player *curr_player;
 	FootballClub *curr_club;
+	Player *curr_player;
+	int injured = 0;
 
 	if(clubs != NULL){
-		curr_club = clubs;
-		while(curr_club->next != NULL && !(strcmp(curr_club->name, club_name) == 0) )
-			curr_club = curr_club->next;
-		curr_player = curr_club->players;
-		while(curr_player->next != NULL && !(strcmp(curr_player->name, player_name) == 0) )
-			curr_player = curr_player->next;
-		if(strcmp(curr_player->name, player_name) == 0) {
-			Player *tmp = curr_player;
-			if(curr_player->prev != NULL)
-				curr_player->prev->next = curr_player->next;
-			if(curr_player->next != NULL) {
-				curr_player->next->prev = curr_player->prev;
-				while(curr_player->prev != NULL)
-					curr_player = curr_player->prev;
-				free(tmp->name);
-				free(tmp->position);
-				free(tmp);
-				tmp = NULL;
-				curr_club->players = curr_player;
+		if( (curr_club = goto_club(clubs, club_name)) != NULL) {
+			if( (curr_player = goto_player(curr_club, player_name)) != NULL) {
+				injured = curr_player->injured;
+				if(curr_player->prev == NULL) { // Daca playerul pe care il stergem este capul listei
+					if(curr_player->next != NULL) { // Daca avem mai mult de un element in lista
+						curr_player = curr_player->next; // Trecem pe urmatorul jucator
+						free_player(&(curr_player->prev)); // Stergem precedentul, adica capul
+					} else {
+						free_player(&curr_player); // Altfel avem doar un jucator si-l stergem
+					}
+					if(injured == 0) {
+						curr_club->players = curr_player; // Actualizam lista de jucatori in dependenta
+					} else {  							// De lista din care l-am sters, ca a fost jucator accinentat sau ne ....
+						curr_club->injured_players = curr_player;
+						}
+				} else {						// Daca playerul nu era capul listei :
+					curr_player->prev->next = curr_player->next; // jucatorul curent din lista devine urmatorul jucator
+				if(curr_player->next != NULL)
+					curr_player->next->prev = curr_player->prev;
+				free_player(&(curr_player)); // Eliberam spatiul de memorie pentru jucatorul pe care il stergem
+				}
 			}
-		} else
-			return ;
-	}
+		}
+		
+	} else
+		return ;
 }
+
+
+// Pentru a actualiza scorul unui utilizator mai intai il identific cu goto_club 
+// si goto_player, dupa ce il depistez, ii fac o copie care are deja scorul actaulizat
+// il sterg din club si-l adaug din nou, insa cu noul scor
 
 void update_score(FootballClub *clubs, char *club_name,
 					char *player_name, int score) {
 	FootballClub* curr_club;
 	Player* curr_player;
-	Player* copy_player = (Player *)malloc(sizeof(Player));
+	Player* copy_player;
 
 	if(clubs) {
-		curr_club = clubs;
-		while(curr_club->next != NULL && !(strcmp(curr_club->name, club_name) == 0) )
-			curr_club = curr_club->next;
-		curr_player = curr_club->players;
-		while(curr_player->next != NULL && !(strcmp(curr_player->name, player_name) == 0) )
-			curr_player = curr_player->next;
-		if (strcmp(curr_player->name, player_name) == 0) {
-			copy_player->name = strdup(player_name);
-			copy_player->position = strdup(curr_player->position);
-			copy_player->score = score;
-			copy_player->injured = curr_player->injured;
-			remove_player(clubs, club_name, player_name);
-			Sorted_insert(&(curr_club)->players, copy_player);
+		if((curr_club = goto_club(clubs,club_name)) != NULL) {
+			if((curr_player = goto_player(curr_club, player_name)) != NULL) {
+				copy_player = cpy_player(curr_player);
+				copy_player->score = valid_score(score);
+				remove_player(clubs, club_name, player_name);
+				if(copy_player->injured == 0) {
+					Sorted_insert(&(curr_club)->players, copy_player);
+				} else
+					Sorted_insert(&(curr_club)->injured_players, copy_player);
+			}
 		}
-	} else {
+	} else 
 		return ;
-	}
 }
+
+// Actualizarea pozitiei are loc dupa acelasi princiu ca si a scorului
+// doar ca schimbam si pozitia si scorul jucatorului, il stergem si-l
+// inseram din nou
 
 void update_game_position(FootballClub *clubs, char *club_name,
 							char *player_name, char *position, int score) {
 	FootballClub* curr_club;
 	Player* curr_player;
-	Player* copy_player = (Player *)malloc(sizeof(Player));
+	Player* copy_player;
 
 	if(clubs) {
-		curr_club = clubs;
-		while(curr_club->next != NULL && !(strcmp(curr_club->name, club_name) == 0) )
-			curr_club = curr_club->next;
-		curr_player = curr_club->players;
-		while(curr_player->next != NULL && !(strcmp(curr_player->name, player_name) == 0) )
-			curr_player = curr_player->next;
-		if (strcmp(curr_player->name, player_name) == 0) {
-			copy_player->name = strdup(player_name);
-			copy_player->position = strdup(position);
-			copy_player->score = score;
-			copy_player->injured = curr_player->injured;
-			remove_player(clubs, club_name, player_name);
-			Sorted_insert(&(curr_club)->players, copy_player);
+		if((curr_club = goto_club(clubs, club_name)) != NULL){
+			if((curr_player = goto_player(curr_club, player_name))!= NULL) {
+				copy_player = cpy_player(curr_player);
+				free(copy_player->position);
+				copy_player->position = strdup(position);
+				copy_player->score = valid_score(score);
+				remove_player(clubs, club_name, player_name);
+				if(copy_player->injured == 0)
+					Sorted_insert(&(curr_club)->players, copy_player);
+				else
+					Sorted_insert(&(curr_club)->injured_players, copy_player);
+			}
 		}
-	} else {
+	} else 
 		return ;
-	}
 }
+
+// Pentru a muta jucatorul in lista jucatorilor accidentati mai intai
+// il identificam, ii schimbam scorul in functie de numarul de zile
+// in care va fi accidentat, ii facem o copie, il stergem si-l inseram
+// in lista jucatorilor accidentati din clubul curent
 
 void add_injury(FootballClub *clubs, char *club_name,
 				char *player_name, int days_no) {
 	FootballClub* curr_club;
 	Player* curr_player;
-	Player* copy_player = (Player *)malloc(sizeof(Player));
+	Player* tmp;
 
 	if(clubs) {
-		curr_club = clubs;
-		while(curr_club->next != NULL && !(strcmp(curr_club->name, club_name) == 0) )
-			curr_club = curr_club->next;
-		curr_player = curr_club->players;
-		while(curr_player->next != NULL && !(strcmp(curr_player->name, player_name) == 0) )
-			curr_player = curr_player->next;
-		if (strcmp(curr_player->name, player_name) == 0) {
-			copy_player->name = strdup(player_name);
-			copy_player->position = strdup(curr_player->position);
-			copy_player->score = valid_score(curr_player->score - (0.1 * days_no));
-			copy_player->injured = 1;
-			copy_player->next = copy_player->prev = NULL;
-			remove_player(clubs, club_name, player_name);
-			curr_player = curr_club->injured_players;
-			if(curr_player == NULL)
-				curr_club->injured_players = copy_player;
-			else {
-				while (curr_player->next != NULL) {
-				if(strcmp(curr_player->name, player_name) > 0)
-					InsertBefore(&(curr_club->injured_players),curr_player,copy_player);
-					return ;
-				}
-				if(strcmp(curr_player->name, player_name) < 0) {
-					if(curr_player->next == NULL) {
-
-						InsertAfter(curr_player, copy_player);
-						return ;
-					}
-				}
+		if( (curr_club = goto_club(clubs, club_name)) != NULL) {
+			if( (curr_player = goto_player(curr_club, player_name)) != NULL) {
+				curr_player->score = curr_player->score - (0.1 * days_no);
+				tmp = cpy_player(curr_player);
+				tmp->injured = 1;
+				tmp->score = valid_score(tmp->score);
+				remove_player(clubs, club_name, player_name);
+				Sorted_insert( &(curr_club->injured_players), tmp);
 			}
 		}
-	} else {
+		
+			
+	} else
 		return ;
-	}
 
 }
+
+// Ca sa intoarcem jucatorul in lista playerilor neaccidentati ii actualizam
+// parametrul injured, il copiem, il stergem din lista jucatorilor accidentati
+// si il inseram in lista jucatorilor neaccidentati ai clubului curent
 
 void recover_from_injury(FootballClub *clubs, char *club_name,
 							char *player_name) {
 	FootballClub * curr_club;
 	Player* curr_player;
-	Player* cpy_player = (Player *)malloc(sizeof(Player));
+	Player* tmp;
 
 	if(clubs) {
-		curr_club = clubs;
-		while(curr_club->next != NULL && !(strcmp(curr_club->name, club_name) == 0) )
-			curr_club = curr_club->next;
-		curr_player = curr_club->injured_players;
-		while(curr_player->next != NULL && !(strcmp(curr_player->name, player_name) == 0) )
-			curr_player = curr_player->next;
-			if (strcmp(curr_player->name, player_name) == 0) {
-			cpy_player->name = strdup(player_name);
-			cpy_player->position = strdup(curr_player->position);
-			cpy_player->score = curr_player->score;
-			cpy_player->injured = 0;
-			remove_player(clubs, club_name, player_name);
-			Sorted_insert(&(curr_club)->players, cpy_player);
+		if( (curr_club = goto_club(clubs, club_name)) != NULL) {
+			if( (curr_player = goto_player(curr_club, player_name)) != NULL) {
+				tmp = cpy_player(curr_player);				
+				tmp->injured = 0;
+				remove_player(clubs, club_name, player_name);
+				Sorted_insert(&(curr_club->players), tmp);
+			}
 		}
-
 	} else
 		return ;
-
-
 }
 
 // Frees memory for a list of Player.
 void destroy_player_list(Player *player) {
-	while(player->next != NULL) {
-		player = player->next;
-		free(player->prev->name);
-		free(player->prev->position);
-		free(player->prev->name);
+	Player *curr = player;
+	Player *next;
+
+	while(curr != NULL) {
+		next = curr->next;
+		free_player(&curr);
+		curr = next;
 	}
-	free(player->name);
-	free(player->position);
-	free(player);
+	// player = NULL;
 }
 
 // Frees memory for a list of FootballClub.
 void destroy_club_list(FootballClub *clubs) {
-	FootballClub* tmp;
+	FootballClub* next;
+	FootballClub* curr = clubs;
 
-	while(clubs->next != NULL) {
-		tmp = clubs;
-		free(tmp->name);
-		destroy_player_list(tmp->injured_players);
-		destroy_player_list(tmp->players);
-		clubs = clubs->next;
+
+	while(curr != NULL) {
+		next = curr->next;
+		free(curr->name);
+		if(curr->injured_players != NULL)
+			destroy_player_list(curr->injured_players);
+		if(curr->players!= NULL)
+			destroy_player_list(curr->players);
+		free(curr);
+		curr = next;
 	}
-	destroy_player_list(clubs->injured_players);
-	destroy_player_list(clubs->players);
-	free(clubs);
 }
 
 // Displays a list of players.
